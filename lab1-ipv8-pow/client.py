@@ -35,18 +35,14 @@ def init_ipv8():
 
     # Load or create our IPv8 identity key.
     # This .pem file is important. Do not delete it after registering.
-    builder.add_key(
-        alias="my peer",
-        generation="curve25519",
-        file_path=KEY_FILE,
-    )
+    builder.add_key("my peer", "curve25519", KEY_FILE)
 
     # Add our custom Lab1Community overlay.
     # The discovery strategy helps us find peers in this community.
     builder.add_overlay(
         "Lab1Community",
         "my peer",
-        [WalkerDefinition(Strategy.RandomWalk, 30, {"timeout": 3.0})],
+        [WalkerDefinition(Strategy.RandomWalk, 10, {"timeout": 2.0})],
         default_bootstrap_defs,
         {},
         [],
@@ -73,7 +69,8 @@ async def main():
 
     # Mine the nonce before sending anything to the server.
     # nonce = compute_proof_of_work()
-    nonce = 1
+    # nonce: int = 518866785
+    nonce: int = 518866785
     
     
     ipv8 = init_ipv8()
