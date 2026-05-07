@@ -44,33 +44,6 @@ def hash_submission(email: str, github_url: str, nonce: int) -> bytes:
 
 
 def has_28_leading_zero_bits(digest: bytes) -> bool:
-    """
-    Check whether the SHA-256 hash satisfies the assignment difficulty.
-
-    The assignment requires 28 leading zero bits.
-
-    Since 1 byte = 8 bits:
-        28 bits = 3 full zero bytes + 4 extra zero bits
-
-    So the hash must start with:
-
-        byte 0: 00000000  -> digest[0] == 0
-        byte 1: 00000000  -> digest[1] == 0
-        byte 2: 00000000  -> digest[2] == 0
-        byte 3: 0000xxxx  -> digest[3] < 16
-
-    In hexadecimal, valid hashes start like:
-
-        00000000...
-        00000003...
-        0000000a...
-        0000000f...
-
-    But not:
-
-        00000010...
-        0000001a...
-    """
 
     return (digest[0] == 0 and digest[1] == 0 and digest[2] == 0
             and digest[3] < 16)

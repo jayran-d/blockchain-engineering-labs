@@ -68,9 +68,8 @@ async def main():
     os.makedirs("keys", exist_ok=True)
 
     # Mine the nonce before sending anything to the server.
-    # nonce = compute_proof_of_work()
+    nonce = compute_proof_of_work()
     # nonce: int = 518866785
-    nonce: int = 518866785
     
     
     ipv8 = init_ipv8()
