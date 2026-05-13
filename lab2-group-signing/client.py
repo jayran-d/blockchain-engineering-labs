@@ -9,24 +9,11 @@ from ipv8_service import IPv8
 import logging
 
 from community import BcECommunity
-from pow import mine_nonce_fast
-
-
 
 # Load variables from .env into os.environ
 load_dotenv()
 
-EMAIL: str = os.environ["EMAIL"]
-GITHUB_URL: str = os.environ["GITHUB_URL"]
-
-KEY_FILE = "keys/lab1_key.pem"
-
-
-def compute_proof_of_work():
-    print("Mining nonce...")
-    nonce = mine_nonce_fast(EMAIL, GITHUB_URL)
-    print(f"Using nonce: {nonce}")
-    return nonce
+KEY_FILE = "keys/lab_identity_key.pem"
 
 
 def init_ipv8():
@@ -52,10 +39,10 @@ def init_ipv8():
         builder.finalize(),
         extra_communities={"BcECommunity": BcECommunity},
     )
-    
+
     # Suppress noisy IPv8 packet-handling errors from unrelated peers.
     logging.getLogger("BcECommunity").setLevel(logging.CRITICAL)
-    
+
     return ipv8
 
 
@@ -67,11 +54,6 @@ async def main():
 
     os.makedirs("keys", exist_ok=True)
 
-    # Mine the nonce before sending anything to the server.
-    nonce = compute_proof_of_work()
-    # nonce: int = 518866785
-    
-    
     ipv8 = init_ipv8()
 
     await ipv8.start()
@@ -81,14 +63,18 @@ async def main():
 
     community: BcECommunity = ipv8.get_overlay(BcECommunity)
 
-    submitted = False
+    registered = False
 
     try:
-        while True:
-            if not submitted:
-                submitted = community.send_submission(EMAIL, GITHUB_URL, nonce)
 
-            await asyncio.sleep(1)
+        await community.find_server_peer()
+
+        while True:
+
+            if not registered:
+                registered = community.register_group()
+
+            await asyncio.sleep(0.25)
 
     finally:
         await ipv8.stop()
