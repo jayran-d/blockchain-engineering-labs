@@ -2,18 +2,14 @@ from ipv8.community import Community
 from ipv8.lazy_community import lazy_wrapper
 import asyncio
 
-from payloads import (
-    RegisterPayload,
-    ServerResponsePayload,
-    ChallengeRequestPayload,
-    ChallengeResponsePayload,
-    BundleSubmissionPayload,
-    RoundResultPayload,
-)
+from payloads import (RegisterPayload, ServerResponsePayload,
+                      ChallengeRequestPayload, ChallengeResponsePayload,
+                      BundleSubmissionPayload, RoundResultPayload, NonceToSignPayload,
+                      SignatureSubmissionPayload)
 
 from config import (MEMBER1_PUBLIC_KEY_HEX, MEMBER2_PUBLIC_KEY_HEX,
                     MEMBER3_PUBLIC_KEY_HEX, COMMUNITY_ID_HEX,
-                    SERVER_PUBLIC_KEY_HEX, GROUP_ID)
+                    SERVER_PUBLIC_KEY_HEX)
 
 MEMBER1_PUBLIC_KEY = bytes.fromhex(MEMBER1_PUBLIC_KEY_HEX)  #Darian
 MEMBER2_PUBLIC_KEY = bytes.fromhex(MEMBER2_PUBLIC_KEY_HEX)  #Jayran
@@ -44,18 +40,23 @@ class BcECommunity(Community):
         # Also used when a challenge request is rejected early.
         self.add_message_handler(RoundResultPayload, self.on_round_result)
 
+        self.add_message_handler(NonceToSignPayload, self.on_nonce_to_sign)
+
+        self.add_message_handler(SignatureSubmissionPayload,
+                                 self.on_signature_submission)
+        # self.my_public_key = self.my_peer.public_key.key_to_bin()
+
         #Saving peer vars
         self.server_peer = None
         self.member1_peer = None  #DARIAN
         self.member3_peer = None  #YVES
 
-        self.group_id = GROUP_ID
-
-        # These are filled after server responses.
-        self.current_nonce = None
+        self.round_started = False
+        self.round_signatures = [None, None, None]
+        self.bundle_submitted = False
+        
+        self.group_id = None
         self.current_round_number = None
-        self.deadline = None
-        self.rounds_completed = 0
 
     # ---------------------------------------------------------------------
     # Helper methods
@@ -79,6 +80,14 @@ class BcECommunity(Community):
         """
         return self.peer_public_key(peer) == self.expected_server_public_key()
 
+    def is_teammate_peer(self, peer) -> bool:
+        peer_public_key = self.peer_public_key(peer)
+
+        return peer_public_key in {
+            MEMBER1_PUBLIC_KEY,
+            MEMBER3_PUBLIC_KEY,
+        }
+
     async def find_server_peer(self):
         """
         Keep looking through discovered peers until the real Lab 2 server is found.
@@ -97,7 +106,7 @@ class BcECommunity(Community):
 
                 if actual_public_key == self.expected_server_public_key():
                     self.server_peer = peer
-                    print("Matched Lab 2 server public key.")
+                    print("=====Found Lab 2 server=====")
                     return peer
 
             print("Server peer not found yet.")
@@ -110,7 +119,7 @@ class BcECommunity(Community):
 
         found_teammates = set()
 
-        while len(found_teammates) < TEAMMATE_COUNT:
+        while len(found_teammates) < 2:
             peers = self.get_peers()
             print(f"Discovered {len(peers)} peer(s).")
 
@@ -137,10 +146,17 @@ class BcECommunity(Community):
                     found_teammates.add(peer_public_key_hex)
                     continue
 
-                await asyncio.sleep(0.25)
+            await asyncio.sleep(0.25)
 
         print("All teammate peers found.")
         return found_teammates
+
+    def sign_nonce(self, nonce: bytes) -> bytes:
+        """
+        Sign the raw 32-byte nonce with my private IPv8 key.
+        """
+
+        return self.crypto.create_signature(self.my_peer.key, nonce)
 
     # ---------------------------------------------------------------------
     # Outgoing messages to server
@@ -157,7 +173,7 @@ class BcECommunity(Community):
         sig3 must belong to member3_key
         """
 
-        print("Sending group registration...")
+        # print("Sending group registration...")
 
         payload = RegisterPayload(
             member1_key=MEMBER1_PUBLIC_KEY,
@@ -165,46 +181,35 @@ class BcECommunity(Community):
             member3_key=MEMBER3_PUBLIC_KEY,
         )
 
-        self.ez_send(self.server_peer, payload)
+        try:
+            self.ez_send(self.server_peer, payload)
+        except:
+            print("Failed to send register message.")
+            return False
+
         return True
 
     def request_challenge(self) -> bool:
-        """
-        Request the next challenge from the Lab 2 server.
 
-        If group_id is not passed, we use self.group_id from registration.
-        """
-
-        print(f"Requesting challenge")
+        # print(f"Requesting challenge")
 
         payload = ChallengeRequestPayload(group_id=self.group_id)
         self.ez_send(self.server_peer, payload)
 
         return True
 
-    def submit_bundle(
-        self,
-        sig1: bytes,
-        sig2: bytes,
-        sig3: bytes,
-    ) -> bool:
-        """
-        Submit an already ordered signature bundle to the server.
+    def submit_bundle(self) -> bool:
 
-        Important:
-        sig1, sig2, sig3 must match the original registration order.
-        """
-
-        print(
-            f"Submitting signature bundle for round {self.current_round_number}..."
-        )
+        # print(
+        #     f"Submitting signature bundle for round {self.current_round_number}..."
+        # )
 
         payload = BundleSubmissionPayload(
             group_id=self.group_id,
             round_number=self.current_round_number,
-            sig1=sig1,
-            sig2=sig2,
-            sig3=sig3,
+            sig1=self.round_signatures[0],
+            sig2=self.round_signatures[1],
+            sig3=self.round_signatures[2],
         )
 
         self.ez_send(self.server_peer, payload)
@@ -216,23 +221,18 @@ class BcECommunity(Community):
 
     @lazy_wrapper(ServerResponsePayload)
     def on_server_response(self, peer, payload: ServerResponsePayload):
-        """
-        Called when the server replies to RegisterPayload.
-
-        Message ID = 2.
-        """
 
         if not self.is_server_peer(peer):
             return
 
-        print("\nRegistration response received:")
-        print(f"success = {payload.success}")
-        print(f"group_id = {payload.group_id}")
-        print(f"message = {payload.message}")
+        # print("\nRegistration response received:")
+        # print(f"success = {payload.success}")
+        # print(f"group_id = {payload.group_id}")
+        # print(f"message = {payload.message}")
 
         if payload.success:
             self.group_id = payload.group_id
-            print(f"Stored group_id: {self.group_id}")
+            # print(f"Stored group_id: {self.group_id}")
         else:
             print("Group registration failed.")
 
@@ -247,28 +247,37 @@ class BcECommunity(Community):
         if not self.is_server_peer(peer):
             return
 
-        self.current_nonce = payload.nonce
-        self.current_round_number = payload.round_number
-        self.deadline = payload.deadline
+        if payload.round_number != 2:
+            # print("It is not my round yet, not starting round.")
+            return
 
-        print("\nChallenge response received:")
+        if self.round_started:
+            # print("Round already started. Not sending nonce to teammates again.")
+            return
+
+        self.round_started = True
+
+        print(
+            f"\nChallenge response for round {payload.round_number} received:")
         print(f"round_number = {payload.round_number}")
         print(f"nonce = {payload.nonce.hex()}")
         print(f"deadline = {payload.deadline}")
 
-        # print("We should now sign the raw nonce bytes, not nonce.hex().")
+        self.current_round_number = payload.round_number
+
+        my_signature = self.sign_nonce(payload.nonce)
+        self.round_signatures[1] = my_signature
+
+        self.send_nonce_to_teammates(payload.nonce, payload.round_number)
 
     @lazy_wrapper(RoundResultPayload)
     def on_round_result(self, peer, payload: RoundResultPayload):
-        """
-        Called when the server replies to a SignatureBundle.
-
-        Message ID = 6.
-
-        Also called if a ChallengeRequest is rejected early.
-        """
 
         if not self.is_server_peer(peer):
+            return
+
+        if payload.round_number != 2:
+            # print("Ignoring Round result for not yet started round 2")
             return
 
         print("\nRound result received:")
@@ -277,12 +286,92 @@ class BcECommunity(Community):
         print(f"rounds_completed = {payload.rounds_completed}")
         print(f"message = {payload.message}")
 
-        if payload.success:
-            self.rounds_completed = payload.rounds_completed
 
-            if payload.rounds_completed == 3:
-                print("All 3 rounds completed.")
-            else:
-                print("Round accepted. Next round can start.")
+    # ---------------------------------------------------------------------
+    # Internal outgoing messages to teammates
+    # ---------------------------------------------------------------------
+
+    def send_sig_to_coord(self, peer, signature, round_number) -> bool:
+
+        # print(f"Sending signature back to coordinator")
+
+        payload = SignatureSubmissionPayload(round_number=round_number,
+                                             signature=signature)
+        self.ez_send(peer, payload)
+
+        # print(f"Sent signature for round {round_number} back to coordinator.")
+
+        return True
+
+    def send_nonce_to_teammates(self, nonce: bytes, round_number: int):
+        
+        if self.group_id is None:
+            print("Cannot send nonce: group_id is missing.")
+            return
+
+        payload = NonceToSignPayload(
+            nonce=nonce,
+            round_number=round_number,
+            group_id=self.group_id,
+        )
+
+        for teammate_peer in [self.member1_peer, self.member3_peer]:
+            if teammate_peer is None:
+                continue
+
+            self.ez_send(teammate_peer, payload)
+
+        # print(f"Sent nonce for round {round_number} to teammates.")
+
+    # ---------------------------------------------------------------------
+    # Internal incoming messages from teammates
+    # ---------------------------------------------------------------------
+
+    @lazy_wrapper(NonceToSignPayload)
+    def on_nonce_to_sign(self, peer, payload: NonceToSignPayload):
+        """
+        """
+
+        if not self.is_teammate_peer(peer):
+            # print("Ignored NonceToSign from non-teammate peer.")
+            return
+
+        if payload.round_number == 2:
+            # print("Ignored round 2 nonce to sign")
+            return
+
+        # print("\nReceived nonce to sign from teammate:")
+        # print(f"nonce = {payload.nonce.hex()}")
+        # print(f"round_number = {payload.round_number}")
+        # print(f"group_id = {payload.group_id}")
+
+        self.group_id = payload.group_id
+
+        signature = self.sign_nonce(payload.nonce)
+
+        self.send_sig_to_coord(peer, signature, payload.round_number)
+
+    @lazy_wrapper(SignatureSubmissionPayload)
+    def on_signature_submission(self, peer,
+                                payload: SignatureSubmissionPayload):
+        """
+        """
+
+        if not self.is_teammate_peer(peer):
+            # print("Ignored signature submission from non-teammate peer.")
+            return
+
+        # print("\nReceived signature submission from teammate:")
+        # print(f"round_number = {payload.round_number}")
+        # print(f"signature = {payload.signature.hex()}")
+
+        if self.peer_public_key(peer) == MEMBER1_PUBLIC_KEY:
+            self.round_signatures[0] = payload.signature
+            # print("=====Saved signature from Darian====")
         else:
-            print("Round failed or request was rejected.")
+            self.round_signatures[2] = payload.signature
+            # print("=====Saved signature from Yves====")
+
+        if all(self.round_signatures) and not self.bundle_submitted:
+            self.bundle_submitted = True
+            self.submit_bundle()

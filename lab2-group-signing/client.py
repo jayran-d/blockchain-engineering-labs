@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
 from ipv8_service import IPv8
+from ipv8.util import run_forever
 
 import logging
 
@@ -21,11 +22,8 @@ def init_ipv8():
     builder = ConfigBuilder().clear_keys().clear_overlays()
 
     # Load or create our IPv8 identity key.
-    # This .pem file is important. Do not delete it after registering.
     builder.add_key("my peer", "curve25519", KEY_FILE)
 
-    # Add our custom BcECommunity overlay.
-    # The discovery strategy helps us find peers in this community.
     builder.add_overlay(
         "BcECommunity",
         "my peer",
@@ -46,35 +44,42 @@ def init_ipv8():
     return ipv8
 
 
-async def main():
+async def challenge_request_loop(community: BcECommunity,
+                                 interval: float = 0.03):
     """
-    Start the client, mine a valid nonce, connect to IPv8,
-    find the server peer, and submit the Proof of Work.
+    Keep requesting challenges after we know the group_id.
     """
 
+    while not community.round_started:
+        if community.group_id is not None:
+            community.request_challenge()
+
+        await asyncio.sleep(interval)
+
+    # print("My round has started. Stopping challenge request loop.")
+
+
+async def main():
     os.makedirs("keys", exist_ok=True)
 
     ipv8 = init_ipv8()
-
     await ipv8.start()
 
-    print("IPv8 started.")
-    print("Searching for server peer...")
+    # print("IPv8 started.")
+    # print("Searching for server peer...")
 
     community: BcECommunity = ipv8.get_overlay(BcECommunity)
 
-    registered = False
-
     try:
-
         await community.find_server_peer()
+        await community.find_teammate_peers()
 
-        while True:
+        asyncio.create_task(challenge_request_loop(community))
 
-            if not registered:
-                registered = community.register_group()
+        # print("Challenge request loop started.")
+        # print("Waiting for group_id from member 1...")
 
-            await asyncio.sleep(0.25)
+        await run_forever()
 
     finally:
         await ipv8.stop()

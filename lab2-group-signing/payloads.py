@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ipv8.messaging.payload_dataclass import DataClassPayloadWID
 
-#### CLIENT <-> SERVER PAYLOADS
+
 @dataclass
 class RegisterPayload(DataClassPayloadWID):
     """
@@ -92,3 +92,23 @@ class RoundResultPayload(DataClassPayloadWID):
     rounds_completed: int
     message: str
 
+
+@dataclass
+class NonceToSignPayload(DataClassPayloadWID):
+    msg_id = 7
+    format_list = ["varlenH", "q", "varlenHutf8"]
+    names = ["nonce", "round_number", "group_id"]
+
+    nonce: bytes
+    round_number: int
+    group_id: str
+
+
+@dataclass
+class SignatureSubmissionPayload(DataClassPayloadWID):
+    msg_id = 8
+    format_list = ["q", "varlenH"]
+    names = ["round_number", "signature"]
+
+    round_number: int
+    signature: bytes
