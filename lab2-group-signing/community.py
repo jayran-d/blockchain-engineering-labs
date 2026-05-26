@@ -225,10 +225,10 @@ class BcECommunity(Community):
         if not self.is_server_peer(peer):
             return
 
-        # print("\nRegistration response received:")
-        # print(f"success = {payload.success}")
-        # print(f"group_id = {payload.group_id}")
-        # print(f"message = {payload.message}")
+        print("\nRegistration response received:")
+        print(f"success = {payload.success}")
+        print(f"group_id = {payload.group_id}")
+        print(f"message = {payload.message}")
 
         if payload.success:
             self.group_id = payload.group_id
