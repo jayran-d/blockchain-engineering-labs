@@ -72,9 +72,10 @@ async def main():
 
     try:
         await community.find_server_peer()
-        await community.find_teammate_peers()
+        community.register_group()
+        # await community.find_teammate_peers()
 
-        asyncio.create_task(challenge_request_loop(community))
+        # asyncio.create_task(challenge_request_loop(community))
 
         # print("Challenge request loop started.")
         # print("Waiting for group_id from member 1...")
