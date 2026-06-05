@@ -61,7 +61,7 @@ def init_ipv8():
 async def main():
 
     ipv8 = init_ipv8()
-    
+
     await ipv8.start()
 
     # print("IPv8 started.")

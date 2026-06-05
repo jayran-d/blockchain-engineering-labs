@@ -5,11 +5,12 @@ import asyncio
 from payloads import RegisterBlockchainPayload, RegisterResponsePayload
 
 from config import (LAB3_REGISTER_COMMUNITY_ID_HEX,
-                    LAB3_REGISTER_SERVER_PUBLIC_KEY_HEX)
+                    LAB3_REGISTER_SERVER_PUBLIC_KEY_HEX,
+                    BLOCKCHAIN_COMMUNITY_ID_HEX)
 
 
 class Lab3RegistrationCommunity(Community):
-    
+
     community_id = bytes.fromhex(LAB3_REGISTER_COMMUNITY_ID_HEX)
 
     def __init__(self, *args, **kwargs):
@@ -23,7 +24,7 @@ class Lab3RegistrationCommunity(Community):
 
         self.group_id = None
 
-        self.blockchain_community_id = None
+        self.blockchain_community_id = BLOCKCHAIN_COMMUNITY_ID_HEX
 
     def peer_public_key(self, peer) -> bytes:
         """
