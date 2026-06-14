@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Local private keys
+keys/*.pem
+keys/*.key
+key.pem

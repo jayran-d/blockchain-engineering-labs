@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 import logging
 
 from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
@@ -8,7 +9,11 @@ from ipv8.util import run_forever
 
 from registration.community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
-from config import KEY_FILE
+
+from tests import run_dummy_transaction_test
+
+
+KEY_FILE = "keys/lab_identity_key.pem"
 
 
 def parse_args():
@@ -36,12 +41,12 @@ def parse_args():
 def init_ipv8():
     builder = ConfigBuilder().clear_keys().clear_overlays()
 
-    builder.add_key("my node", "curve25519", KEY_FILE)
+    builder.add_key("my peer", "curve25519", KEY_FILE)
 
     # Community 1: used only for registering with the Lab 3 server
     builder.add_overlay(
         "Lab3RegistrationCommunity",
-        "my node",
+        "my peer",
         [WalkerDefinition(Strategy.RandomWalk, 10, {"timeout": 2.0})],
         default_bootstrap_defs,
         {},
@@ -51,7 +56,7 @@ def init_ipv8():
     # Community 2: actual PoW blockchain community
     builder.add_overlay(
         "BlockchainCommunity",
-        "my node",
+        "my peer",
         [WalkerDefinition(Strategy.RandomWalk, 10, {"timeout": 2.0})],
         default_bootstrap_defs,
         {},
@@ -86,7 +91,7 @@ async def main(register: bool, test: bool) -> None:
 
     try:
 
-        # await blockchain_community.find_teammate_peers()
+        await blockchain_community.find_teammate_peers()
 
         if register:
             print("Register flag enabled. Finding server peer...")
@@ -95,14 +100,20 @@ async def main(register: bool, test: bool) -> None:
             print("Registering blockchain community...")
             register_community.register_blockchain()
 
+        # blockchain_community.miner.start()
+
         if test:
-            #Implement test logic
-            pass
+            test_task = asyncio.create_task(
+                run_dummy_transaction_test(blockchain_community))
 
         await run_forever()
 
     finally:
 
+        if test:
+            test_task.cancel()
+
+        # blockchain_community.miner.stop()
         await ipv8.stop()
 
 
