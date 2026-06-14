@@ -1,21 +1,41 @@
+import argparse
 import asyncio
 import os
-
-from dotenv import load_dotenv
+import logging
 
 from ipv8.configuration import ConfigBuilder, Strategy, WalkerDefinition, default_bootstrap_defs
 from ipv8_service import IPv8
 from ipv8.util import run_forever
 
-import logging
-
 from registration.community import Lab3RegistrationCommunity
 from community import BlockchainCommunity
 
-# Load variables from .env into os.environ
-load_dotenv()
+from tests import run_dummy_transaction_test
+
 
 KEY_FILE = "keys/lab_identity_key.pem"
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run Lab 3 PoW blockchain IPv8 node.")
+
+    parser.add_argument(
+        "-r",
+        "--register",
+        action="store_true",
+        help=
+        "Register the blockchain community with the Lab 3 server before running.",
+    )
+
+    parser.add_argument(
+        "-test",
+        "--test",
+        action="store_true",
+        help="Run dummy transaction test.",
+    )
+
+    return parser.parse_args()
 
 
 def init_ipv8():
@@ -58,14 +78,10 @@ def init_ipv8():
     return ipv8
 
 
-async def main():
-
+async def main(register: bool, test: bool) -> None:
     ipv8 = init_ipv8()
 
     await ipv8.start()
-
-    # print("IPv8 started.")
-    # print("Searching for server peer...")
 
     register_community: Lab3RegistrationCommunity = ipv8.get_overlay(
         Lab3RegistrationCommunity)
@@ -74,14 +90,33 @@ async def main():
         BlockchainCommunity)
 
     try:
-        await register_community.find_server_peer()
-        register_community.register_blockchain()
+
+        await blockchain_community.find_teammate_peers()
+
+        if register:
+            print("Register flag enabled. Finding server peer...")
+            await register_community.find_server_peer()
+
+            print("Registering blockchain community...")
+            register_community.register_blockchain()
+
+        # blockchain_community.miner.start()
+
+        if test:
+            test_task = asyncio.create_task(
+                run_dummy_transaction_test(blockchain_community))
 
         await run_forever()
 
     finally:
+
+        if test:
+            test_task.cancel()
+
+        # blockchain_community.miner.stop()
         await ipv8.stop()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    args = parse_args()
+    asyncio.run(main(register=args.register, test=args.test))

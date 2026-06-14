@@ -86,3 +86,51 @@ class BlockResponsePayload(DataClassPayloadWID):
     nonce: int
     block_hash: bytes
     tx_hashes: bytes
+
+
+@dataclass
+class TransactionBroadcastPayload(DataClassPayloadWID):
+    """
+    Internal teammate message used to propagate a transaction
+    through our blockchain community.
+
+    Same transaction fields as SubmitTransactionPayload
+    """
+
+    msg_id = 7
+
+    format_list = ["varlenH", "varlenH", "q", "varlenH"]
+    names = ["sender_key", "data", "timestamp", "signature"]
+
+    sender_key: bytes
+    data: bytes
+    timestamp: int
+    signature: bytes
+
+
+@dataclass
+class BlockBroadcastPayload(DataClassPayloadWID):
+    """
+    Internal teammate message used to propagate a newly mined block.
+    """
+
+    msg_id = 8
+
+    format_list = [
+        "q", "varlenH", "varlenH", "q", "q", "q", "varlenH", "varlenH",
+        "varlenH"
+    ]
+    names = [
+        "height", "prev_hash", "txs_hash", "timestamp", "difficulty", "nonce",
+        "block_hash", "tx_hashes", "transactions_bytes"
+    ]
+
+    height: int
+    prev_hash: bytes
+    txs_hash: bytes
+    timestamp: int
+    difficulty: int
+    nonce: int
+    block_hash: bytes
+    tx_hashes: bytes
+    transactions_bytes: bytes

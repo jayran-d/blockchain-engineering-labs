@@ -22,9 +22,9 @@ class Lab3RegistrationCommunity(Community):
 
         self.server_peer = None
 
-        self.group_id = None
+        self.group_id = "d8c9d397bea2ee37"
 
-        self.blockchain_community_id = BLOCKCHAIN_COMMUNITY_ID_HEX
+        self.blockchain_community_id = bytes.fromhex(BLOCKCHAIN_COMMUNITY_ID_HEX)
 
     def peer_public_key(self, peer) -> bytes:
         """
