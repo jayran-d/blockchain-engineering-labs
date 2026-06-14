@@ -2,3 +2,5 @@
 .env
 **/__pycache__
 keys/
+push_lab3_to_synced.sh
+pull_lab3_from_synced.sh
