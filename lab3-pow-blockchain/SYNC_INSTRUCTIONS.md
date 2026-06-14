@@ -162,6 +162,267 @@ Here:
 
 ---
 
+# One-Time Setup: Replace Your Current Lab 3 Folder with the Synced Structure
+
+Before using the normal pull/push workflow, each person should do a one-time setup step.
+
+The goal is to:
+
+1. keep a backup of your current Lab 3 folder;
+2. remove the old Lab 3 folder from your personal repo;
+3. add the synced repo's `main` branch as the new Lab 3 folder;
+4. make Git recognize the Lab 3 folder as a real subtree;
+5. allow future pulls using `git subtree pull`.
+
+This only needs to be done once.
+
+---
+
+## Step 1: Go to Your Personal Repo
+
+```bash
+cd path/to/your/personal-repo
+```
+
+Switch to the branch where you want to work on Lab 3:
+
+```bash
+git checkout <your-personal-lab3-branch>
+```
+
+Example:
+
+```bash
+git checkout jayran-lab3-work
+```
+
+---
+
+## Step 2: Make Sure Your Current Work Is Saved
+
+Check your status:
+
+```bash
+git status
+```
+
+If you have uncommitted work, commit it first:
+
+```bash
+git add .
+git commit -m "Save current Lab 3 work before synced setup"
+```
+
+This makes sure your current work is not lost.
+
+---
+
+## Step 3: Back Up Your Current Lab 3 Folder
+
+Create a backup outside the repository.
+
+This is important because the backup should not accidentally become part of the synced Lab 3 structure.
+
+So just copy your current lab 3 folder and name is lab3-backup or soemthing.
+
+After this, your old Lab 3 code is safely backed up one folder above the personal repo.
+
+---
+
+## Step 4: Remove the Old Lab 3 Folder from the Personal Repo
+
+Remove the old Lab 3 folder from your personal repo.
+
+You can also do this manually. 
+
+### Jayran
+
+```bash
+rm -rf lab3-pow-blockchain
+```
+
+### Darian
+
+```bash
+rm -rf lab1-ipv8-pow/lab3
+```
+
+### Yves
+
+```bash
+rm -rf lab3
+```
+
+Then commit the removal:
+
+```bash
+git add -A
+git commit -m "Remove old Lab 3 folder before synced subtree setup"
+```
+
+---
+
+## Step 5: Add the Synced Repo as the New Lab 3 Folder
+
+Make sure the synced remote exists:
+
+```bash
+git remote -v
+```
+
+If you do not see `synced`, add it:
+
+```bash
+git remote add synced git@github.com:jayran-d/cs4160-lab3-blockchain.git
+```
+
+Fetch the latest synced repo state:
+
+```bash
+git fetch synced
+```
+
+Now add `synced/main` as your new Lab 3 folder.
+
+### Jayran
+
+```bash
+git subtree add --prefix=lab3-pow-blockchain synced main --squash
+```
+
+### Darian
+
+```bash
+git subtree add --prefix=lab1-ipv8-pow/lab3 synced main --squash
+```
+
+### Yves
+
+```bash
+git subtree add --prefix=lab3 synced main --squash
+```
+
+This makes the synced repository's `main` branch become your new Lab 3 folder.
+
+For example, Jayran's personal repo will now contain:
+
+```text
+personal-repo/
+├── lab1-ipv8-pow/
+├── lab2-group-signing/
+└── lab3-pow-blockchain/
+    ├── README.md
+    ├── client.py
+    ├── community.py
+    ├── config.py
+    ├── payloads.py
+    ├── blockchain/
+    ├── registration/
+    └── keys/
+```
+
+The important difference is that Git now knows `lab3-pow-blockchain/` came from the synced repo. This allows future subtree pulls to work correctly.
+
+---
+
+## Step 6: Reapply Any Useful Code from Your Backup
+
+Your old Lab 3 code is still available in the backup folder.
+
+For example:
+
+```text
+../lab3-pow-blockchain-backup/
+```
+
+Manually copy or adapt any useful code from the backup into the new Lab 3 folder.
+
+Do not blindly copy the entire old folder back, because that may undo the synced structure.
+
+Instead, copy useful code into the matching files, for example:
+
+```text
+old backup file                 new synced structure file
+----------------------------------------------------------
+community.py                    lab3-pow-blockchain/community.py
+payloads.py                     lab3-pow-blockchain/payloads.py
+block.py                        lab3-pow-blockchain/blockchain/block.py
+miner.py                        lab3-pow-blockchain/blockchain/miner.py
+```
+
+After adapting your code, commit it:
+
+```bash
+git add .
+git commit -m "Reapply personal Lab 3 work to synced structure"
+git push origin <your-personal-lab3-branch>
+```
+
+---
+
+## Step 7: Future Pulls Will Now Work
+
+After this one-time setup, you can pull new synced changes into your Lab 3 folder using:
+
+### Jayran
+
+```bash
+git fetch synced
+git subtree pull --prefix=lab3-pow-blockchain synced main --squash
+```
+
+### Darian
+
+```bash
+git fetch synced
+git subtree pull --prefix=lab1-ipv8-pow/lab3 synced main --squash
+```
+
+### Yves
+
+```bash
+git fetch synced
+git subtree pull --prefix=lab3 synced main --squash
+```
+
+This is why the one-time setup is useful: future updates from `synced/main` can be merged into your personal Lab 3 folder instead of manually copied.
+
+---
+
+## Summary of the One-Time Setup
+
+The pattern is:
+
+```bash
+# 1. Save current work
+git status
+git add .
+git commit -m "Save current Lab 3 work before synced setup"
+
+# 2. Back up the old Lab 3 folder outside the repo
+cp -a <your-lab3-folder-path> ../lab3-backup
+
+# 3. Remove the old Lab 3 folder
+rm -rf <your-lab3-folder-path>
+git add -A
+git commit -m "Remove old Lab 3 folder before synced subtree setup"
+
+# 4. Add synced/main as the new Lab 3 folder
+git fetch synced
+git subtree add --prefix=<your-lab3-folder-path> synced main --squash
+
+# 5. Reapply useful code from the backup manually
+git add .
+git commit -m "Reapply personal Lab 3 work to synced structure"
+git push origin <your-personal-lab3-branch>
+```
+
+After this, normal pulling uses:
+
+```bash
+git subtree pull --prefix=<your-lab3-folder-path> synced main --squash
+```
+
 # Lab 3 Folder Paths
 
 Each person needs to know where their Lab 3 folder is located inside their personal repository.
@@ -720,10 +981,50 @@ You can use this script to pull from the synced repo. You can adjust the `SYNCED
 
 set -e
 
-LAB3_PATH="${1:-lab3-pow-blockchain}"
+# ---------------------------------------------------------------------
+# Usage:
+#
+#   ./pull_lab3_from_synced.sh <lab3-folder-path> [synced-branch-name]
+#
+# Examples:
+#
+#   # Pull synced/main into Jayran's Lab 3 folder
+#   ./pull_lab3_from_synced.sh lab3-pow-blockchain
+#
+#   # Pull synced/main explicitly
+#   ./pull_lab3_from_synced.sh lab3-pow-blockchain main
+#
+#   # Pull Yves's synced branch into Jayran's Lab 3 folder
+#   ./pull_lab3_from_synced.sh lab3-pow-blockchain yves-lab3
+#
+#   # Darian
+#   ./pull_lab3_from_synced.sh lab1-ipv8-pow/lab3 main
+#
+#   # Yves
+#   ./pull_lab3_from_synced.sh lab3 main
+# ---------------------------------------------------------------------
+
+# Values passed from the command line:
+#   $1 = Lab 3 folder path
+#   $2 = synced branch name
+LAB3_PATH="$1"
+SYNCED_BRANCH="${2:-main}"
+
+# If you prefer, you can hardcode these instead:
+# LAB3_PATH="lab3-pow-blockchain"
+# SYNCED_BRANCH="main"
 
 SYNCED_REMOTE="synced"
-SYNCED_BRANCH="main"
+
+if [ -z "$LAB3_PATH" ]; then
+    echo "Usage: $0 <lab3-folder-path> [synced-branch-name]"
+    echo
+    echo "Examples:"
+    echo "  $0 lab3-pow-blockchain"
+    echo "  $0 lab3-pow-blockchain main"
+    echo "  $0 lab3-pow-blockchain yves-lab3"
+    exit 1
+fi
 
 if [ ! -d "$LAB3_PATH" ]; then
     echo "Error: Lab 3 folder does not exist: $LAB3_PATH"
@@ -741,47 +1042,45 @@ echo "Checking for uncommitted changes..."
 if [ -n "$(git status --porcelain)" ]; then
     echo
     echo "Error: You have uncommitted changes."
-    echo "Commit or stash your changes before pulling from synced/main."
+    echo "Commit or stash your changes before pulling from ${SYNCED_REMOTE}/${SYNCED_BRANCH}."
     echo
-    echo "Options:"
+    echo "Commit option:"
     echo "  git add ."
     echo "  git commit -m \"Save current Lab 3 work\""
     echo
-    echo "or:"
-    echo "  git stash push -m \"temp lab3 work\""
+    echo "Stash option:"
+    echo "  git stash push -u -m \"temp lab3 work\""
     echo
     exit 1
 fi
 
-echo "Fetching latest ${SYNCED_REMOTE}/${SYNCED_BRANCH}..."
+echo "Fetching latest branches from ${SYNCED_REMOTE}..."
 git fetch "$SYNCED_REMOTE"
 
-TMP_DIR="$(mktemp -d)"
+if ! git rev-parse --verify --quiet "${SYNCED_REMOTE}/${SYNCED_BRANCH}" >/dev/null; then
+    echo
+    echo "Error: Branch '${SYNCED_REMOTE}/${SYNCED_BRANCH}' does not exist."
+    echo
+    echo "Available synced branches:"
+    git branch -r | grep "${SYNCED_REMOTE}/" || true
+    exit 1
+fi
 
 echo
-echo "Exporting ${SYNCED_REMOTE}/${SYNCED_BRANCH} into temporary folder..."
-git archive "${SYNCED_REMOTE}/${SYNCED_BRANCH}" | tar -x -C "$TMP_DIR"
-
+echo "Pulling ${SYNCED_REMOTE}/${SYNCED_BRANCH} into ${LAB3_PATH}/..."
 echo
-echo "Syncing latest shared Lab 3 files into ${LAB3_PATH}/..."
 
-rsync -av --delete \
-    --exclude='keys/*.pem' \
-    --exclude='keys/*.key' \
-    --exclude='keys/lab_identity_key.pem' \
-    "$TMP_DIR"/ "$LAB3_PATH"/
-
-rm -rf "$TMP_DIR"
+# Pull the selected synced branch into the personal Lab 3 folder.
+# The synced repo root becomes the contents of the Lab 3 folder.
+git subtree pull --prefix="$LAB3_PATH" "$SYNCED_REMOTE" "$SYNCED_BRANCH" --squash
 
 echo
 echo "Done."
 echo
-echo "Check what changed:"
-echo "  git status"
+echo "Updated ${LAB3_PATH}/ from ${SYNCED_REMOTE}/${SYNCED_BRANCH}."
 echo
-echo "Then commit the synced update if needed:"
-echo "  git add ${LAB3_PATH}"
-echo "  git commit -m \"Sync latest shared Lab 3 changes\""
+echo "Next steps:"
+echo "  git status"
 echo "  git push origin <your-personal-branch>"
 ```
 
