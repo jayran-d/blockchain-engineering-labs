@@ -4,17 +4,19 @@ import asyncio
 
 from .payloads import RegisterBlockchainPayload, RegisterResponsePayload
 
-from config import REGISTER_COMMUNITY_ID_HEX, REGISTER_SERVER_PUBLIC_KEY_HEX, BLOCKCHAIN_COMMUNITY_ID_HEX
+from config import (LAB3_REGISTER_COMMUNITY_ID_HEX,
+                    LAB3_REGISTER_SERVER_PUBLIC_KEY_HEX,
+                    BLOCKCHAIN_COMMUNITY_ID_HEX)
 
 
 class Lab3RegistrationCommunity(Community):
 
-    community_id = bytes.fromhex(REGISTER_COMMUNITY_ID_HEX)
+    community_id = bytes.fromhex(LAB3_REGISTER_COMMUNITY_ID_HEX)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        
+        # Server response to RegisterPayload, message_id = 2.
         self.add_message_handler(RegisterResponsePayload,
                                  self.on_register_response)
 
@@ -40,7 +42,7 @@ class Lab3RegistrationCommunity(Community):
         """
         Return the official Lab 3 server public key as bytes.
         """
-        return bytes.fromhex(REGISTER_SERVER_PUBLIC_KEY_HEX)
+        return bytes.fromhex(LAB3_REGISTER_SERVER_PUBLIC_KEY_HEX)
 
     async def find_server_peer(self):
         """
